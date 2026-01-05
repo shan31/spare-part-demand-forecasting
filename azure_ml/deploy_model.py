@@ -5,6 +5,12 @@ Deploys trained models to managed endpoints
 
 import os
 import argparse
+from pathlib import Path
+
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 from azure.ai.ml import MLClient
 from azure.ai.ml.entities import (
     ManagedOnlineEndpoint,
@@ -13,6 +19,7 @@ from azure.ai.ml.entities import (
     Environment,
     CodeConfiguration
 )
+
 from azure.identity import DefaultAzureCredential
 import logging
 
