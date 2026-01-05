@@ -1,55 +1,97 @@
-# Spare Part Demand Forecasting
+# 🛒 Spare Part Demand Forecasting
 
-A production-ready demand forecasting system for spare parts across multiple service centers, featuring ML models (Prophet, XGBoost), interactive Streamlit dashboards, and Azure ML deployment.
+A production-ready demand forecasting system designed to predict spare part inventory needs across service centers. Built with **Streamlit**, **Prophet**, and **XGBoost**, featuring a cost-effective architecture that runs locally or on the cloud.
 
-## Features
+---
 
-- 📊 **Interactive Dashboard** - Streamlit-based UI for forecasting and visualization
-- 🤖 **ML Models** - Prophet for long-term, XGBoost for short-term forecasting
-- ☁️ **Azure ML** - Managed endpoints with autoscaling
-- 🔄 **CI/CD** - Automated training and deployment pipelines
-- 📈 **Data Drift Monitoring** - Automated alerts and retraining triggers
+## ✨ Features
 
-## Quick Start
+### 📊 **Product-Level Analysis (New!)**
+- **🏆 Demand Ranking:** Automatically identifies top-performing products
+- **📈 Trend Visualization:** Interactive charts showing historical demand per product
+- **🔍 Specific Forecasting:** Select individual products or forecast for the entire inventory
+- **📉 Demand Distribution:** Visual breakdown of demand across your catalog
 
+### 🤖 **Hybrid Forecasting Engine**
+- **Local Mode (Default):** Runs Prophet & XGBoost directly in the app (Zero Cost)
+- **Cloud Mode (Optional):** Connects to Azure ML Managed Endpoints for enterprise scaling
+- **Adaptive Models:** Uses Prophet for trend/seasonality and XGBoost for short-term pattern matching
+
+### 🚀 **Production Ready**
+- **Deployment:** Ready for [Streamlit Cloud](STREAMLIT_DEPLOY.md) (Free Tier compatible)
+- **CI/CD:** Automated testing pipeline with GitHub Actions
+- **Monitoring:** Data drift detection and automated alerts
+- **Interactive UI:** User-friendly dashboard for uploading data and viewing results
+
+---
+
+## 🚦 Quick Start
+
+### 1. Run Locally
 ```bash
 # Clone repository
 git clone https://github.com/shan31/spare-part-demand-forecasting.git
 cd spare-part-demand-forecasting
 
-# Create virtual environment
-python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/Mac
-
 # Install dependencies
 pip install -r requirements.txt
 
-# Run Streamlit app
+# Run Dashboard
 streamlit run streamlit_app/app.py
 ```
 
-## Project Structure
+### 2. Deploy to Cloud (Free)
+See our [Streamlit Cloud Deployment Guide](STREAMLIT_DEPLOY.md) to go live in 5 minutes!
+
+---
+
+## 🛠️ Usage Guide
+
+1.  **Upload Data:** Upload a CSV with `date`, `part_id`, and `demand_quantity` columns.
+2.  **Analyze:** View the "Top Products" table to see which parts drive your inventory.
+3.  **Select:** Choose a specific Product ID from the dropdown to forecast for that item.
+4.  **Forecast:** Click "Generate Forecast" using the built-in local models.
+5.  **Export:** Download the forecast results as a CSV file.
+
+---
+
+## 📂 Project Structure
 
 ```
-├── data/               # Raw and processed datasets
-├── notebooks/          # Jupyter notebooks for EDA and modeling
-├── src/                # Source code modules
-├── streamlit_app/      # Streamlit dashboard
-├── azure_ml/           # Azure ML pipelines and configs
+├── data/               # Processed datasets and upload samples
+├── streamlit_app/      # Main Dashboard application
+│   └── app.py          # Application entry point
+├── src/                # Core forecasting logic
+│   ├── forecasting/    # Prophet & XGBoost model wrappers
+│   └── monitoring/     # Drift detection & alerting
+├── azure_ml/           # Azure configuration (Optional)
 ├── .github/workflows/  # CI/CD pipelines
-└── tests/              # Unit and integration tests
+└── PRODUCTION_DEPLOYMENT.md # Detailed deployment docs
 ```
 
-## Tech Stack
+---
 
-| Component | Technology |
-|-----------|------------|
-| ML Models | Prophet, XGBoost |
-| Dashboard | Streamlit, Plotly |
-| Cloud | Azure ML |
-| CI/CD | GitHub Actions |
+## 💰 Cost Optimization
 
-## License
+This project is optimized for **Zero Monthly Cost** by default:
+- **Hosting:** Free on Streamlit Cloud
+- **Compute:** Local forecasting (runs in browser/app container)
+- **Deployment:** GitHub Actions (Free tier)
 
-MIT License
+*Note: Azure ML scripts are included `azure_ml/` for users who require enterprise-grade scalable endpoints, but are disabled by default to save costs.*
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
