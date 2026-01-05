@@ -1,0 +1,38 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Environment variables
+.env
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# Data files (keep structure, ignore large files)
+data/raw/*.csv
+data/processed/*.csv
+*.parquet
+
+# Model artifacts
+*.pkl
+*.joblib
+models/*.h5
+
+# Azure ML
+.azureml/
+outputs/
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

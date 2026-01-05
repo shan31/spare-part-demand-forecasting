@@ -1,0 +1,62 @@
+name: CD Pipeline - Azure ML Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  AZURE_ML_WORKSPACE: ${{ secrets.AZURE_ML_WORKSPACE }}
+  AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install azure-ai-ml azure-identity
+    
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Train and Register Model
+      run: |
+        echo "Training model..."
+        # python azure_ml/train_pipeline.py
+        echo "Model training completed (placeholder)"
+    
+    - name: Deploy to Azure ML Endpoint
+      run: |
+        echo "Deploying model..."
+        # python azure_ml/deploy_model.py
+        echo "Deployment completed (placeholder)"
+    
+    - name: Smoke Test
+      run: |
+        echo "Running smoke tests..."
+        # curl -X POST $ENDPOINT_URL -H "Authorization: Bearer $API_KEY" -d '{"model": "prophet", "periods": 7}'
+        echo "Smoke tests passed (placeholder)"
+    
+    - name: Notify Success
+      if: success()
+      run: |
+        echo "✅ Deployment successful!"
+    
+    - name: Notify Failure
+      if: failure()
+      run: |
+        echo "❌ Deployment failed!"
