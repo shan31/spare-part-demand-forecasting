@@ -209,7 +209,7 @@ def show_forecast():
             
             # Sample forecast data
             dates = pd.date_range(start=datetime.now(), periods=30, freq='D')
-            forecast = 50 + pd.np.random.randn(30).cumsum()
+            forecast = 50 + np.random.randn(30).cumsum()
             lower = forecast - 10
             upper = forecast + 10
             
