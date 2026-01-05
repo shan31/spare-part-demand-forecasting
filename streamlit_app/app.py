@@ -5,6 +5,7 @@ Spare Part Demand Forecasting
 
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
@@ -114,7 +115,7 @@ def show_dashboard():
         
         # Generate sample data
         dates = pd.date_range(start='2024-01-01', periods=90, freq='D')
-        demand = 50 + 20 * pd.Series(range(90)).apply(lambda x: pd.np.sin(x/10)) + pd.np.random.randn(90) * 5
+        demand = 50 + 20 * np.sin(np.arange(90)/10) + np.random.randn(90) * 5
         
         df = pd.DataFrame({'Date': dates, 'Demand': demand})
         
