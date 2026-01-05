@@ -182,16 +182,16 @@ def show_dashboard():
 
 
 def show_upload():
-    """Data upload page with forecasting capability."""
-    st.markdown("## 📤 Upload Data & Generate Forecast")
-    st.markdown("Upload your demand data in CSV format, then generate forecasts")
+    """Data upload page with product-level analysis and forecasting."""
+    st.markdown("## 📤 Upload Data & Analyze Demand by Product")
+    st.markdown("Upload your demand data, analyze which products are in demand, then generate forecasts")
     
     # Initialize session state
     if 'uploaded_data' not in st.session_state:
         st.session_state['uploaded_data'] = None
     
     uploaded_file = st.file_uploader("Choose a CSV file", type="csv", 
-                                      help="CSV should contain 'date' and 'demand_quantity' columns")
+                                      help="CSV should contain 'date', 'demand_quantity', and optionally 'part_id' columns")
     
     if uploaded_file is not None:
         try:
@@ -201,19 +201,103 @@ def show_upload():
             
             # Data Preview
             st.subheader("📋 Data Preview")
-            st.dataframe(df.head(20), use_container_width=True)
-            
-            # Column Info
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write("**Columns:**", list(df.columns))
-            with col2:
-                st.write("**Data Types:**")
-                st.write(df.dtypes)
+            st.dataframe(df.head(10), use_container_width=True)
             
             st.markdown("---")
             
-            # Forecast Settings
+            # =============== PRODUCT-LEVEL ANALYSIS ===============
+            st.subheader("📊 Product Demand Analysis")
+            
+            # Check if part_id column exists
+            part_col = None
+            for col in ['part_id', 'Part_ID', 'product_id', 'Product_ID', 'item_id', 'sku', 'SKU']:
+                if col in df.columns:
+                    part_col = col
+                    break
+            
+            if part_col and 'demand_quantity' in df.columns:
+                # Group by product and calculate metrics
+                product_stats = df.groupby(part_col).agg({
+                    'demand_quantity': ['sum', 'mean', 'count', 'std']
+                }).round(2)
+                product_stats.columns = ['Total Demand', 'Avg Daily Demand', 'Records', 'Std Dev']
+                product_stats = product_stats.sort_values('Total Demand', ascending=False).reset_index()
+                
+                # Display product ranking
+                col1, col2 = st.columns([1, 1])
+                
+                with col1:
+                    st.markdown("### 🏆 Top Products by Demand")
+                    st.dataframe(product_stats.head(10), use_container_width=True, hide_index=True)
+                    
+                    # Highlight top product
+                    top_product = product_stats.iloc[0]
+                    st.success(f"🥇 **Highest Demand:** {top_product[part_col]} with {top_product['Total Demand']:,.0f} total units")
+                
+                with col2:
+                    st.markdown("### 📈 Demand Distribution")
+                    fig = px.bar(
+                        product_stats.head(10), 
+                        x=part_col, 
+                        y='Total Demand',
+                        color='Total Demand',
+                        color_continuous_scale='Oranges',
+                        title='Top 10 Products by Total Demand'
+                    )
+                    fig.update_layout(showlegend=False, xaxis_tickangle=-45)
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                st.markdown("---")
+                
+                # Product Selection for Forecasting
+                st.subheader("🎯 Select Product for Forecasting")
+                
+                all_parts = ['All Products'] + list(product_stats[part_col].values)
+                selected_part = st.selectbox(
+                    "Choose a product to forecast",
+                    options=all_parts,
+                    help="Select a specific product or 'All Products' for aggregate forecast"
+                )
+                
+                # Filter data based on selection
+                if selected_part != 'All Products':
+                    filtered_df = df[df[part_col] == selected_part].copy()
+                    st.info(f"📦 Forecasting for **{selected_part}** ({len(filtered_df)} records)")
+                else:
+                    filtered_df = df.copy()
+                    st.info(f"📦 Forecasting for **All Products** ({len(filtered_df)} records)")
+                
+                # Show selected product trend
+                if 'date' in filtered_df.columns:
+                    filtered_df['date'] = pd.to_datetime(filtered_df['date'])
+                    daily_demand = filtered_df.groupby('date')['demand_quantity'].sum().reset_index()
+                    
+                    st.markdown(f"### 📉 Historical Demand Trend: {selected_part}")
+                    fig = px.line(daily_demand, x='date', y='demand_quantity',
+                                  color_discrete_sequence=['#F97316'],
+                                  title=f'Daily Demand for {selected_part}')
+                    fig.update_layout(xaxis_title="Date", yaxis_title="Demand Quantity")
+                    st.plotly_chart(fig, use_container_width=True)
+                
+            else:
+                # No part_id column - use aggregate data
+                st.warning("⚠️ No 'part_id' column found. Showing aggregate demand analysis.")
+                filtered_df = df.copy()
+                
+                if 'demand_quantity' in df.columns:
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Total Demand", f"{df['demand_quantity'].sum():,.0f}")
+                    with col2:
+                        st.metric("Average Daily", f"{df['demand_quantity'].mean():,.1f}")
+                    with col3:
+                        st.metric("Max Demand", f"{df['demand_quantity'].max():,.0f}")
+                    with col4:
+                        st.metric("Min Demand", f"{df['demand_quantity'].min():,.0f}")
+            
+            st.markdown("---")
+            
+            # =============== FORECAST SETTINGS ===============
             st.subheader("🔮 Generate Forecast")
             
             col1, col2, col3 = st.columns(3)
@@ -225,45 +309,62 @@ def show_upload():
                 forecast_days = st.slider("Forecast Days", 7, 90, 30, key="upload_days")
             
             with col3:
-                use_azure = st.checkbox("Use Azure ML Endpoint", value=True)
+                use_azure = st.checkbox("Use Azure ML Endpoint", value=False)
             
             if st.button("🚀 Generate Forecast", type="primary", key="upload_forecast"):
-                with st.spinner("Generating forecast..."):
+                with st.spinner(f"Generating forecast for {selected_part if part_col else 'all data'}..."):
                     try:
                         if use_azure:
-                            # Call Azure ML endpoint
                             forecast_result = call_azure_endpoint(
                                 model=model_type.lower(),
                                 periods=forecast_days,
-                                data=df
+                                data=filtered_df
                             )
                         else:
-                            # Local forecast simulation
-                            forecast_result = generate_local_forecast(df, forecast_days)
+                            forecast_result = generate_local_forecast(filtered_df, forecast_days)
+                        
+                        # Add product info to result
+                        if part_col:
+                            forecast_result['product'] = selected_part
                         
                         st.session_state['forecast_result'] = forecast_result
-                        st.success("✅ Forecast generated successfully!")
+                        st.success(f"✅ Forecast generated for {selected_part if part_col else 'aggregate demand'}!")
                         
                     except Exception as e:
                         st.error(f"❌ Error: {str(e)}")
-                        st.info("💡 Tip: Check if Azure ML endpoint is configured in Settings")
+                        st.info("💡 Tip: Try with 'Use Azure ML Endpoint' unchecked for local forecast")
             
-            # Display forecast results if available
+            # Display forecast results
             if 'forecast_result' in st.session_state and st.session_state['forecast_result'] is not None:
-                display_forecast_results(st.session_state['forecast_result'], forecast_days)
+                result = st.session_state['forecast_result']
+                product_name = result.get('product', 'All Products')
+                st.markdown(f"### 📊 Forecast Results: {product_name}")
+                display_forecast_results(result, forecast_days)
                 
         except Exception as e:
             st.error(f"Error reading file: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
     else:
         # Show sample data format
         st.info("📝 **Expected CSV format:**")
         sample_data = pd.DataFrame({
-            'date': ['2024-01-01', '2024-01-02', '2024-01-03'],
-            'demand_quantity': [45, 52, 48],
-            'part_id': ['P-001', 'P-001', 'P-001'],
-            'service_center': ['SC-North', 'SC-North', 'SC-North']
+            'date': ['2024-01-01', '2024-01-02', '2024-01-03', '2024-01-01', '2024-01-02'],
+            'demand_quantity': [45, 52, 48, 30, 35],
+            'part_id': ['P-001', 'P-001', 'P-001', 'P-002', 'P-002'],
+            'service_center': ['SC-North', 'SC-North', 'SC-North', 'SC-South', 'SC-South']
         })
         st.dataframe(sample_data, use_container_width=True)
+        
+        st.markdown("""
+        ### Required Columns:
+        - `date` - Date of demand record
+        - `demand_quantity` - Number of units demanded
+        
+        ### Optional Columns (for product-level analysis):
+        - `part_id` - Product/Part identifier
+        - `service_center` - Location of demand
+        """)
 
 
 def call_azure_endpoint(model: str, periods: int, data: pd.DataFrame):
