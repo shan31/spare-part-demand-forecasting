@@ -283,6 +283,7 @@ def show_upload():
                 # No part_id column - use aggregate data
                 st.warning("⚠️ No 'part_id' column found. Showing aggregate demand analysis.")
                 filtered_df = df.copy()
+                selected_part = "All Products"  # FIX: Define selected_part even when no part_col
                 
                 if 'demand_quantity' in df.columns:
                     col1, col2, col3, col4 = st.columns(4)
@@ -312,7 +313,7 @@ def show_upload():
                 use_azure = st.checkbox("Use Azure ML Endpoint", value=False)
             
             if st.button("🚀 Generate Forecast", type="primary", key="upload_forecast"):
-                with st.spinner(f"Generating forecast for {selected_part if part_col else 'all data'}..."):
+                with st.spinner(f"Generating forecast for {selected_part}..."):
                     try:
                         if use_azure:
                             forecast_result = call_azure_endpoint(
@@ -324,11 +325,18 @@ def show_upload():
                             forecast_result = generate_local_forecast(filtered_df, forecast_days)
                         
                         # Add product info to result
-                        if part_col:
-                            forecast_result['product'] = selected_part
+                        forecast_result['product'] = selected_part
                         
                         st.session_state['forecast_result'] = forecast_result
-                        st.success(f"✅ Forecast generated for {selected_part if part_col else 'aggregate demand'}!")
+                        st.success(f"✅ Forecast generated for {selected_part}!")
+                        
+                    except Exception as e:
+                        st.error(f"❌ Error: {str(e)}")
+                        st.info("💡 Tip: Try with 'Use Azure ML Endpoint' unchecked for local forecast")
+                        # Show detailed error for debugging
+                        import traceback
+                        with st.expander("Show error details"):
+                            st.code(traceback.format_exc())
                         
                     except Exception as e:
                         st.error(f"❌ Error: {str(e)}")
