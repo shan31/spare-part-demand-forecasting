@@ -43,10 +43,30 @@ st.markdown("""
         border-radius: 10px;
         border-left: 4px solid #F97316;
     }
-    .stMetric > div {
-        background: #fff7ed;
-        padding: 1rem;
+    /* KPI Tile Styling */
+    [data-testid="stMetricValue"] {
+        color: #1E3A5F !important;
+        font-weight: 700;
+    }
+    [data-testid="stMetricLabel"] {
+        color: #F97316 !important;
+        font-weight: 600;
+    }
+    [data-testid="stMetricDelta"] {
+        color: #10B981 !important;
+    }
+    /* Sidebar Quick Stats */
+    .sidebar .stMetric {
+        background: linear-gradient(135deg, #1E3A5F 0%, #0F172A 100%);
+        padding: 0.8rem;
         border-radius: 8px;
+        margin-bottom: 0.5rem;
+    }
+    .sidebar [data-testid="stMetricValue"] {
+        color: #F97316 !important;
+    }
+    .sidebar [data-testid="stMetricLabel"] {
+        color: #94A3B8 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -107,6 +127,24 @@ def show_dashboard():
     
     st.markdown("---")
     
+    # Quick Forecast (moved above charts)
+    st.subheader("⚡ Quick Forecast")
+    
+    col1, col2, col3 = st.columns([2, 2, 1])
+    
+    with col1:
+        part_id = st.selectbox("Select Part", ['P-1234', 'P-5678', 'P-9012', 'P-3456', 'P-7890'])
+    
+    with col2:
+        service_center = st.selectbox("Service Center", ['SC-North', 'SC-South', 'SC-East', 'SC-West'])
+    
+    with col3:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🔮 Predict", type="primary"):
+            st.success(f"Predicted demand for {part_id}: **47 units** (next 7 days)")
+    
+    st.markdown("---")
+    
     # Sample visualization
     col1, col2 = st.columns(2)
     
@@ -141,23 +179,6 @@ def show_dashboard():
                      color='Demand', color_continuous_scale='Oranges')
         fig.update_layout(showlegend=False, yaxis={'categoryorder': 'total ascending'})
         st.plotly_chart(fig, use_container_width=True)
-    
-    # Quick Forecast
-    st.markdown("---")
-    st.subheader("⚡ Quick Forecast")
-    
-    col1, col2, col3 = st.columns([2, 2, 1])
-    
-    with col1:
-        part_id = st.selectbox("Select Part", ['P-1234', 'P-5678', 'P-9012', 'P-3456', 'P-7890'])
-    
-    with col2:
-        service_center = st.selectbox("Service Center", ['SC-North', 'SC-South', 'SC-East', 'SC-West'])
-    
-    with col3:
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🔮 Predict", type="primary"):
-            st.success(f"Predicted demand for {part_id}: **47 units** (next 7 days)")
 
 
 def show_upload():
