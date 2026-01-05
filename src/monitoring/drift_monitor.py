@@ -98,7 +98,7 @@ class DriftMonitor:
                 'ks_statistic': round(ks_stat, 4),
                 'ks_pvalue': round(ks_pvalue, 4),
                 'psi': round(psi, 4),
-                'drift_detected': is_drift,
+                'drift_detected': bool(is_drift),  # Convert numpy bool to Python bool
                 'reference_mean': round(float(np.mean(ref_values)), 2),
                 'current_mean': round(float(np.mean(cur_values)), 2),
                 'mean_shift_pct': round((np.mean(cur_values) - np.mean(ref_values)) / np.mean(ref_values) * 100, 2)
