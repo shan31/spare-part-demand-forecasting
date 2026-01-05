@@ -301,7 +301,10 @@ def show_upload():
             # =============== FORECAST SETTINGS ===============
             st.subheader("🔮 Generate Forecast")
             
-            col1, col2, col3 = st.columns(3)
+            # Info about local forecasting
+            st.info("ℹ️ Using **local forecasting** (Prophet & XGBoost models run in Streamlit). Fast, free, and works offline!")
+            
+            col1, col2 = st.columns(2)
             
             with col1:
                 model_type = st.selectbox("Model Type", ["Prophet", "XGBoost"], key="upload_model")
@@ -309,20 +312,11 @@ def show_upload():
             with col2:
                 forecast_days = st.slider("Forecast Days", 7, 90, 30, key="upload_days")
             
-            with col3:
-                use_azure = st.checkbox("Use Azure ML Endpoint", value=False)
-            
             if st.button("🚀 Generate Forecast", type="primary", key="upload_forecast"):
                 with st.spinner(f"Generating forecast for {selected_part}..."):
                     try:
-                        if use_azure:
-                            forecast_result = call_azure_endpoint(
-                                model=model_type.lower(),
-                                periods=forecast_days,
-                                data=filtered_df
-                            )
-                        else:
-                            forecast_result = generate_local_forecast(filtered_df, forecast_days)
+                        # Always use local forecasting (Azure ML endpoint removed to save costs)
+                        forecast_result = generate_local_forecast(filtered_df, forecast_days)
                         
                         # Add product info to result
                         forecast_result['product'] = selected_part
@@ -332,14 +326,11 @@ def show_upload():
                         
                     except Exception as e:
                         st.error(f"❌ Error: {str(e)}")
-                        st.info("💡 Tip: Try with 'Use Azure ML Endpoint' unchecked for local forecast")
+                        st.info("💡 Tip: Check your data format (needs 'date' and 'demand_quantity' columns)")
                         # Show detailed error for debugging
                         import traceback
                         with st.expander("Show error details"):
                             st.code(traceback.format_exc())
-                        
-                    except Exception as e:
-                        st.error(f"❌ Error: {str(e)}")
                         st.info("💡 Tip: Try with 'Use Azure ML Endpoint' unchecked for local forecast")
             
             # Display forecast results
