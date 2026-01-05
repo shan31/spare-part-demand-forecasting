@@ -1,0 +1,471 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Spare Part Demand Forecasting API",
+        "description": "API for predicting spare part demand using Prophet and XGBoost models deployed on Azure ML.",
+        "version": "1.0.0",
+        "contact": {
+            "name": "API Support",
+            "email": "support@example.com"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        }
+    },
+    "servers": [
+        {
+            "url": "https://spare-part-forecast.eastus.inference.ml.azure.com",
+            "description": "Azure ML Production Endpoint"
+        }
+    ],
+    "paths": {
+        "/score": {
+            "post": {
+                "summary": "Get demand forecast predictions",
+                "description": "Generate demand forecasts using either Prophet (time series) or XGBoost (ML) models.",
+                "operationId": "getPrediction",
+                "tags": [
+                    "Predictions"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "oneOf": [
+                                    {
+                                        "$ref": "#/components/schemas/ProphetRequest"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/XGBoostRequest"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/HealthCheckRequest"
+                                    }
+                                ]
+                            },
+                            "examples": {
+                                "prophet_forecast": {
+                                    "summary": "Prophet 7-day forecast",
+                                    "value": {
+                                        "model": "prophet",
+                                        "periods": 7
+                                    }
+                                },
+                                "prophet_specific_dates": {
+                                    "summary": "Prophet specific dates",
+                                    "value": {
+                                        "model": "prophet",
+                                        "dates": [
+                                            "2024-01-15",
+                                            "2024-01-16",
+                                            "2024-01-17"
+                                        ]
+                                    }
+                                },
+                                "xgboost_single": {
+                                    "summary": "XGBoost single prediction",
+                                    "value": {
+                                        "model": "xgboost",
+                                        "features": {
+                                            "day_of_week": 1,
+                                            "month": 6,
+                                            "day_of_month": 15,
+                                            "quarter": 2,
+                                            "year": 2024,
+                                            "week_of_year": 24,
+                                            "is_weekend": 0,
+                                            "is_month_start": 0,
+                                            "is_month_end": 0,
+                                            "lag_1": 45,
+                                            "lag_7": 50,
+                                            "lag_14": 48,
+                                            "lag_30": 52,
+                                            "rolling_mean_7": 45,
+                                            "rolling_mean_14": 47,
+                                            "rolling_mean_30": 49,
+                                            "rolling_std_7": 10,
+                                            "rolling_std_14": 12,
+                                            "rolling_std_30": 15
+                                        }
+                                    }
+                                },
+                                "health_check": {
+                                    "summary": "Health check",
+                                    "value": {
+                                        "health_check": true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful prediction",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/PredictionResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/HealthCheckResponse"
+                                        }
+                                    ]
+                                },
+                                "examples": {
+                                    "prophet_response": {
+                                        "summary": "Prophet forecast response",
+                                        "value": {
+                                            "status": "success",
+                                            "model": "prophet",
+                                            "predictions": [
+                                                {
+                                                    "date": "2024-01-15",
+                                                    "yhat": 5014.87,
+                                                    "yhat_lower": 3498.03,
+                                                    "yhat_upper": 6435.15
+                                                }
+                                            ],
+                                            "timestamp": "2024-01-05T10:30:00"
+                                        }
+                                    },
+                                    "xgboost_response": {
+                                        "summary": "XGBoost prediction response",
+                                        "value": {
+                                            "status": "success",
+                                            "model": "xgboost",
+                                            "predictions": [
+                                                {
+                                                    "prediction": 9351.75
+                                                }
+                                            ],
+                                            "timestamp": "2024-01-05T10:30:00"
+                                        }
+                                    },
+                                    "health_response": {
+                                        "summary": "Health check response",
+                                        "value": {
+                                            "status": "healthy",
+                                            "models": {
+                                                "prophet": true,
+                                                "xgboost": true
+                                            },
+                                            "timestamp": "2024-01-05T10:30:00"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - invalid input",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - missing or invalid API key"
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "description": "Azure ML endpoint API key"
+            }
+        },
+        "schemas": {
+            "ProphetRequest": {
+                "type": "object",
+                "required": [
+                    "model"
+                ],
+                "properties": {
+                    "model": {
+                        "type": "string",
+                        "enum": [
+                            "prophet"
+                        ],
+                        "description": "Model type"
+                    },
+                    "periods": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 365,
+                        "default": 30,
+                        "description": "Number of days to forecast"
+                    },
+                    "dates": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Specific dates to predict (alternative to periods)"
+                    }
+                }
+            },
+            "XGBoostRequest": {
+                "type": "object",
+                "required": [
+                    "model",
+                    "features"
+                ],
+                "properties": {
+                    "model": {
+                        "type": "string",
+                        "enum": [
+                            "xgboost"
+                        ],
+                        "description": "Model type"
+                    },
+                    "features": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/XGBoostFeatures"
+                            },
+                            {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/XGBoostFeatures"
+                                }
+                            }
+                        ],
+                        "description": "Feature values for prediction (single or batch)"
+                    }
+                }
+            },
+            "XGBoostFeatures": {
+                "type": "object",
+                "required": [
+                    "day_of_week",
+                    "month",
+                    "day_of_month",
+                    "quarter",
+                    "year",
+                    "week_of_year",
+                    "is_weekend",
+                    "is_month_start",
+                    "is_month_end",
+                    "lag_1",
+                    "lag_7",
+                    "lag_14",
+                    "lag_30",
+                    "rolling_mean_7",
+                    "rolling_mean_14",
+                    "rolling_mean_30",
+                    "rolling_std_7",
+                    "rolling_std_14",
+                    "rolling_std_30"
+                ],
+                "properties": {
+                    "day_of_week": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 6
+                    },
+                    "month": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 12
+                    },
+                    "day_of_month": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 31
+                    },
+                    "quarter": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 4
+                    },
+                    "year": {
+                        "type": "integer"
+                    },
+                    "week_of_year": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 53
+                    },
+                    "is_weekend": {
+                        "type": "integer",
+                        "enum": [
+                            0,
+                            1
+                        ]
+                    },
+                    "is_month_start": {
+                        "type": "integer",
+                        "enum": [
+                            0,
+                            1
+                        ]
+                    },
+                    "is_month_end": {
+                        "type": "integer",
+                        "enum": [
+                            0,
+                            1
+                        ]
+                    },
+                    "lag_1": {
+                        "type": "number",
+                        "description": "Demand 1 day ago"
+                    },
+                    "lag_7": {
+                        "type": "number",
+                        "description": "Demand 7 days ago"
+                    },
+                    "lag_14": {
+                        "type": "number",
+                        "description": "Demand 14 days ago"
+                    },
+                    "lag_30": {
+                        "type": "number",
+                        "description": "Demand 30 days ago"
+                    },
+                    "rolling_mean_7": {
+                        "type": "number",
+                        "description": "7-day rolling average"
+                    },
+                    "rolling_mean_14": {
+                        "type": "number",
+                        "description": "14-day rolling average"
+                    },
+                    "rolling_mean_30": {
+                        "type": "number",
+                        "description": "30-day rolling average"
+                    },
+                    "rolling_std_7": {
+                        "type": "number",
+                        "description": "7-day rolling std dev"
+                    },
+                    "rolling_std_14": {
+                        "type": "number",
+                        "description": "14-day rolling std dev"
+                    },
+                    "rolling_std_30": {
+                        "type": "number",
+                        "description": "30-day rolling std dev"
+                    }
+                }
+            },
+            "HealthCheckRequest": {
+                "type": "object",
+                "properties": {
+                    "health_check": {
+                        "type": "boolean",
+                        "enum": [
+                            true
+                        ]
+                    }
+                }
+            },
+            "PredictionResponse": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "success"
+                        ]
+                    },
+                    "model": {
+                        "type": "string",
+                        "enum": [
+                            "prophet",
+                            "xgboost"
+                        ]
+                    },
+                    "predictions": {
+                        "type": "array",
+                        "items": {
+                            "type": "object"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "HealthCheckResponse": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "healthy"
+                        ]
+                    },
+                    "models": {
+                        "type": "object",
+                        "properties": {
+                            "prophet": {
+                                "type": "boolean"
+                            },
+                            "xgboost": {
+                                "type": "boolean"
+                            }
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "error"
+                        ]
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Predictions",
+            "description": "Demand forecast prediction endpoints"
+        }
+    ]
+}
