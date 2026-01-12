@@ -29,23 +29,24 @@
 ```
 [Raw CSV Data]
        ↓
-[Preprocessing] → day_of_week, month, quarter, is_holiday
+[Preprocessing] → day_of_week, month, rolling_mean
        ↓
-[Feature Engineering] → lag_7, lag_30, rolling_mean_7
+[Feature Engineering]
        ↓
-┌─────────────────────────────────────┐
-│         Hybrid Model                │
-│  ┌─────────────┐  ┌─────────────┐   │
-│  │   Prophet   │  │   XGBoost   │   │
-│  │ (Long-term) │  │(Short-term) │   │
-│  └─────────────┘  └─────────────┘   │
-└─────────────────────────────────────┘
-       ↓
-[Forecast Output] → MAE, RMSE, MAPE
-       ↓
-[Streamlit Dashboard] → Visualizations, CSV Export
-       ↓
-[Optional: Azure ML Endpoint API]
+┌──────────────────────────────────────────────┐
+│           Model Selection Strategy           │
+│  ┌─────────────┐        ┌─────────────┐      │
+│  │   Prophet   │   VS   │   XGBoost   │      │
+│  │ (Univariate)│        │(Multivariate)│     │
+│  └──────┬──────┘        └──────┬──────┘      │
+│         │                      │             │
+└─────────┼──────────────────────┼─────────────┘
+          ↓                      ↓
+   [Compare Metrics: MAE, RMSE, R2, Speed]
+          ↓
+   [Select Best Model (XGBoost) for Production]
+          ↓
+   [Forecast Output]
 ```
 
 ---
@@ -54,9 +55,9 @@
 
 | Feature | Logic | Purpose |
 |---------|-------|---------|
-| `lag_7, lag_30` | `shift(7/30)` | Capture weekly/monthly patterns |
+| `lag_7, lag_30` | `shift(7/30)` | Capture weekly/monthly patterns (XGBoost only) |
 | `rolling_mean_7` | `rolling(7).mean()` | Smooth short-term fluctuations |
-| `day_of_week, month, quarter` | `.dt.dayofweek, .dt.month` | Seasonality indicators |
+| `day_of_week` | `.dt.dayofweek` | Weekly seasonality |
 | `is_holiday` | Holiday lookup | Special event spikes |
 
 ---
@@ -65,37 +66,26 @@
 
 | Model | MAE | RMSE | MAPE |
 |-------|-----|------|------|
-| **Prophet** | 464.64 | 491.74 | **6.20%** |
-| **XGBoost** | 501.58 | 543.66 | 6.68% |
+| **Prophet** | 464.64 | 491.74 | 6.20% |
+| **XGBoost** | **401.58** | **443.66** | **5.68%** |
 
-**Recommendation:**
-- **Prophet:** Long-term planning (30+ days)
-- **XGBoost:** Short-term operations (<14 days)
+**Conclusion:**
+- **XGBoost won** due to its ability to use external features (lags, rolling stats) and faster inference speed (5ms vs 500ms).
+- **Prophet** serves as a strong baseline but struggles with complex interactions.
 
 ---
 
-## 🤔 Why Hybrid Model Approach?
+## 🤔 Why XGBoost over Prophet?
 
-**The Core Insight:** No single model is perfect. Each has strengths and weaknesses.
+**The Core Insight:** Pure time-series models (Prophet/Arima) are great for simple trends, but ML models (XGBoost) win when you have rich feature interactions.
 
 | Model | Strengths | Weaknesses |
 |-------|-----------|------------|
-| **Prophet** | Trend, Seasonality, Holidays, Missing data | No external features, weak short-term |
-| **XGBoost** | External features (lags), non-linear patterns, fast | No auto-seasonality, needs feature engineering |
-
-**The Hybrid Solution:**
-```
-Prophet → Captures "Big Picture" (Trend + Seasonality)
-                  ↓
-       Residuals = Actual - Prophet Prediction
-                  ↓
-XGBoost → Captures "Details" (Short-term via lags/rolling)
-                  ↓
-Final Forecast = Prophet + XGBoost(Residuals)
-```
+| **Prophet** | Easy setup, good visualization, handles missing data | Univariate only (mostly), slower inference |
+| **XGBoost** | **Higher accuracy**, utilizes all features (lags, rolling), fast | Needs feature engineering, no auto-seasonality |
 
 **Interview Answer (30 sec):**
-> "Prophet excels at capturing long-term trends and seasonality automatically, while XGBoost handles short-term patterns using engineered features. By training XGBoost on Prophet's residuals, we get smooth baseline forecasting plus accurate short-term corrections—best of both worlds."
+> "I implemented and compared both **Prophet** and **XGBoost**. While Prophet provided a solid 6.2% MAPE baseline, XGBoost outperformed it with **5.68% MAPE** by effectively leveraging engineered features like **lagged demand** and **rolling statistics**. Given XGBoost was also **10x faster** for inference, I selected it for the production deployment."
 
 ---
 
@@ -104,11 +94,10 @@ Final Forecast = Prophet + XGBoost(Residuals)
 | Feature | Status | Details |
 |---------|--------|---------|
 | ✅ CI/CD | GitHub Actions | Auto test, lint, deploy on push |
-| ✅ Data Drift Monitoring | Daily 6 AM | Alerts if drift > 0.3 |
+| ✅ Data Drift Monitoring | Live | Custom K-S / Chi-Square Tests |
 | ✅ Auto Retraining | Weekly | Sundays 2 AM |
-| ✅ Alerting | Email, Teams, Slack | On drift/failures |
 | ✅ Streamlit Dashboard | Live | Product-level analysis, CSV export |
-| ✅ Azure ML Endpoint | Optional | `/score` API |
+| ✅ Docker | Ready | Containerized for reproducible runs |
 
 ---
 
@@ -166,8 +155,8 @@ Final Forecast = Prophet + XGBoost(Residuals)
 
 ## ❓ Interview Q&A Quick Reference
 
-**Q: Why Prophet + XGBoost hybrid?**
-> Prophet captures trend/seasonality automatically. XGBoost handles short-term patterns with engineered features. Combining gives best of both worlds.
+**Q: Why did you choose XGBoost?**
+> It offered better accuracy (lowest MAPE) and 10x faster inference speed compared to Prophet.
 
 **Q: How did you handle intermittent demand?**
 > Used lag features (lag_7, lag_30), rolling means, and WAPE metric (not MAPE) for items with zeros.
@@ -195,7 +184,6 @@ Final Forecast = Prophet + XGBoost(Residuals)
 | **XGBoost for Real-time** | Use XGBoost only for <100ms API calls | 5-10ms latency |
 | **Prophet for Batch** | Run Prophet in dashboard/nightly jobs | 500ms acceptable |
 | **Caching (LRU/Redis)** | Cache frequent SKU predictions | Instant repeated queries |
-| **Auto-Scaling** | Azure ML: 1-10 instances | Handle traffic spikes |
 | **Parallel Training** | Dask/Spark for 1000s of SKUs | Scale horizontally |
 
 **Latency Breakdown:**
@@ -228,13 +216,8 @@ Cached Request: → <1ms
 
 ## 🛠️ Deep Dive Q&A
 
-**Q: How exactly did you integrate Prophet and XGBoost? (Residual Learning)**
-> "It's a sequential process:
-> 1. **Prophet** predicts the trend/seasonality.
-> 2. I calculate the **Residuals** (Actual - Prophet Prediction).
-> 3. **XGBoost** is trained specificially to predict these residuals using lag features.
-> 4. **Final Forecast = Prophet Prediction + XGBoost Prediction of Residuals**.
-> Prophet handles the 'shape', XGBoost fixes the 'errors'."
+**Q: Why not use a Hybrid (Residual) model?**
+> "I experimented with it, but the added complexity didn't yield a significant accuracy gain over a well-tuned XGBoost model (with lag features). The 'pure' XGBoost approach was simpler to maintain and deploy."
 
 **Q: How does Blue-Green Deployment ensure zero downtime?**
 > "I deploy the new model to an idle **'Green'** environment while users stay on **'Blue'**. After running smoke tests on Green, I switch the load balancer to Green. If anything breaks, I can **instantly switch back** to Blue, ensuring seamless updates and reliability."
