@@ -80,14 +80,9 @@ def main():
         
         page = st.radio(
             "Go to",
-            ["🏠 Dashboard", "📤 Upload Data", "📈 Forecast", "⚖️ Model Comparison", "⚙️ Settings"],
+            ["📤 Upload Data", "⚖️ Model Comparison"],
             label_visibility="collapsed"
         )
-        
-        st.markdown("---")
-        st.markdown("### Quick Stats")
-        st.metric("Models Active", "2", "Prophet, XGBoost")
-        st.metric("Last Updated", datetime.now().strftime("%Y-%m-%d"))
         
         st.markdown("---")
         st.markdown(
@@ -96,90 +91,10 @@ def main():
         )
     
     # Main content based on page selection
-    if page == "🏠 Dashboard":
-        show_dashboard()
-    elif page == "📤 Upload Data":
+    if page == "📤 Upload Data":
         show_upload()
-    elif page == "📈 Forecast":
-        show_forecast()
     elif page == "⚖️ Model Comparison":
         show_comparison()
-    elif page == "⚙️ Settings":
-        show_settings()
-
-
-def show_dashboard():
-    """Main dashboard view."""
-    st.markdown('<p class="main-header">📊 Spare Part Demand Forecasting</p>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">AI-powered demand prediction for optimized inventory management</p>', unsafe_allow_html=True)
-    
-    # KPI Cards
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric("Total Parts Tracked", "1,234", "+12%")
-    with col2:
-        st.metric("Service Centers", "4", "Active")
-    with col3:
-        st.metric("Model Accuracy", "94.2%", "+2.1%")
-    with col4:
-        st.metric("Forecast Horizon", "30 Days", "")
-    
-    st.markdown("---")
-    
-    # Quick Forecast (moved above charts)
-    st.subheader("⚡ Quick Forecast")
-    
-    col1, col2, col3 = st.columns([2, 2, 1])
-    
-    with col1:
-        part_id = st.selectbox("Select Part", ['P-1234', 'P-5678', 'P-9012', 'P-3456', 'P-7890'])
-    
-    with col2:
-        service_center = st.selectbox("Service Center", ['SC-North', 'SC-South', 'SC-East', 'SC-West'])
-    
-    with col3:
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🔮 Predict", type="primary"):
-            st.success(f"Predicted demand for {part_id}: **47 units** (next 7 days)")
-    
-    st.markdown("---")
-    
-    # Sample visualization
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("📈 Demand Trend")
-        
-        # Generate sample data
-        dates = pd.date_range(start='2024-01-01', periods=90, freq='D')
-        demand = 50 + 20 * np.sin(np.arange(90)/10) + np.random.randn(90) * 5
-        
-        df = pd.DataFrame({'Date': dates, 'Demand': demand})
-        
-        fig = px.line(df, x='Date', y='Demand', 
-                      title='', 
-                      color_discrete_sequence=['#F97316'])
-        fig.update_layout(
-            xaxis_title="",
-            yaxis_title="Units",
-            hovermode='x unified'
-        )
-        st.plotly_chart(fig, use_container_width=True)
-    
-    with col2:
-        st.subheader("🔧 Top Parts by Demand")
-        
-        parts_data = pd.DataFrame({
-            'Part': ['P-1234', 'P-5678', 'P-9012', 'P-3456', 'P-7890'],
-            'Demand': [450, 380, 320, 280, 220]
-        })
-        
-        fig = px.bar(parts_data, x='Demand', y='Part', orientation='h',
-                     color='Demand', color_continuous_scale='Oranges')
-        fig.update_layout(showlegend=False, yaxis={'categoryorder': 'total ascending'})
-        st.plotly_chart(fig, use_container_width=True)
-
 
 def show_upload():
     """Data upload page with product-level analysis and forecasting."""
@@ -191,17 +106,107 @@ def show_upload():
         st.session_state['uploaded_data'] = None
     
     uploaded_file = st.file_uploader("Choose a CSV file", type="csv", 
-                                      help="CSV should contain 'date', 'demand_quantity', and optionally 'part_id' columns")
+                                    help="CSV should contain 'date', 'demand_quantity', and optionally 'part_id' columns")
     
-    if uploaded_file is not None:
+    
+    if st.button("🎲 Load Demo Data", use_container_width=True, help="Generates sample data with 25 parts"):
+        # Generate comprehensive demo data (25 Parts)
+        np.random.seed(42)  # Fixed seed for consistency
+        dates = pd.date_range(start='2023-01-01', periods=365, freq='D')
+        all_dfs = []
+        
+        # 1. High Volume Parts (Top 5)
+        for i in range(1, 6):
+            base = np.random.randint(100, 200)
+            trend = np.linspace(0, 30, 365)
+            noise = np.random.normal(0, 15, 365)
+            seasonality = 20 * np.sin(np.arange(365)/7)
+            demand = base + trend + seasonality + noise
+            part_df = pd.DataFrame({
+                'date': dates, 
+                'demand_quantity': demand, 
+                'part_id': f'Part-{i:03d} (High Vol)', 
+                'category': 'High Moving',
+                'service_center': np.random.choice(['North', 'South'])
+            })
+            all_dfs.append(part_df)
+            
+        # 2. Medium Volume Parts (Next 10)
+        for i in range(6, 16):
+            base = np.random.randint(40, 80)
+            noise = np.random.normal(0, 10, 365)
+            seasonality = 15 * np.sin(np.arange(365)/30) if i % 2 == 0 else 0
+            demand = base + seasonality + noise
+            part_df = pd.DataFrame({
+                'date': dates, 
+                'demand_quantity': demand, 
+                'part_id': f'Part-{i:03d} (Med Vol)', 
+                'category': 'Medium Moving',
+                'service_center': np.random.choice(['East', 'West'])
+            })
+            all_dfs.append(part_df)
+
+        # 3. Intermittent/Low Volume Parts (Last 10)
+        for i in range(16, 26):
+            demand = np.random.choice([0, 0, 0, 5, 10, 15], size=365, p=[0.5, 0.2, 0.1, 0.1, 0.07, 0.03])
+            part_df = pd.DataFrame({
+                'date': dates, 
+                'demand_quantity': demand, 
+                'part_id': f'Part-{i:03d} (Sporadic)', 
+                'category': 'Slow Moving',
+                'service_center': 'Central'
+            })
+            all_dfs.append(part_df)
+        
+        # Combine
+        demo_df = pd.concat(all_dfs)
+        demo_df['demand_quantity'] = demo_df['demand_quantity'].clip(lower=0).astype(int)
+        
+        # Save demo data
+        uploads_dir = Path(__file__).parent.parent / 'data' / 'uploads'
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        save_path = uploads_dir / f"demo_data_{timestamp}.csv"
+        demo_df.to_csv(save_path, index=False)
+        
+        st.session_state['uploaded_data'] = demo_df
+        st.session_state['demo_loaded'] = True
+        st.session_state['demo_save_path'] = str(save_path)
+        uploaded_file = None
+    
+    # Full-width success message
+    if st.session_state.get('demo_loaded', False):
+        save_path = st.session_state.get('demo_save_path', '')
+        if save_path:
+            st.success(f"✅ Demo Data Loaded! (25 Parts) | Saved to: `{Path(save_path).name}`")
+        else:
+            st.success("✅ Demo Data Loaded! (25 Parts)")
+        st.session_state['demo_loaded'] = False  # Reset after showing
+
+    if uploaded_file is not None or (st.session_state['uploaded_data'] is not None):
         try:
-            df = pd.read_csv(uploaded_file)
-            st.session_state['uploaded_data'] = df
+            if uploaded_file is not None:
+                df = pd.read_csv(uploaded_file)
+                st.session_state['uploaded_data'] = df
+                
+                # Save uploaded file to disk
+                uploads_dir = Path(__file__).parent.parent / 'data' / 'uploads'
+                uploads_dir.mkdir(parents=True, exist_ok=True)
+                
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                save_path = uploads_dir / f"uploaded_{timestamp}.csv"
+                df.to_csv(save_path, index=False)
+                st.info(f"📁 File saved to: `data/uploads/uploaded_{timestamp}.csv`")
+            else:
+                df = st.session_state['uploaded_data']
+
+            # ... Rest of processing ...
             st.success(f"✅ Loaded {len(df)} rows, {len(df.columns)} columns")
             
             # Data Preview
             st.subheader("📋 Data Preview")
             st.dataframe(df.head(10), use_container_width=True)
+            
             
             st.markdown("---")
             
@@ -246,6 +251,56 @@ def show_upload():
                     )
                     fig.update_layout(showlegend=False, xaxis_tickangle=-45)
                     st.plotly_chart(fig, use_container_width=True)
+                
+                st.markdown("---")
+
+                # =============== WEEKLY & MONTHLY ANALYSIS ===============
+                st.subheader("🗓️ Quantity Needed Analysis (Weekly & Monthly)")
+
+                # Filter last 30/90 days for current view
+                if 'date' in df.columns and 'demand_quantity' in df.columns:
+                    # Ensure datetime
+                    df['date'] = pd.to_datetime(df['date'])
+                    
+                    # Current Month/Week Logic
+                    now_date = df['date'].max()
+                    current_month = now_date.month
+                    current_year = now_date.year
+                    
+                    # Monthly Demand (This Month)
+                    monthly_data = df[
+                        (df['date'].dt.month == current_month) & 
+                        (df['date'].dt.year == current_year)
+                    ]
+                    
+                    # Weekly Demand (Last 7 Days)
+                    weekly_data = df[
+                        df['date'] >= (now_date - pd.Timedelta(days=7))
+                    ]
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown(f"### 📅 Last 30 Days Demand")
+                        monthly_total = monthly_data['demand_quantity'].sum()
+                        st.metric(f"Total Quantity (Month: {now_date.strftime('%B')})", f"{monthly_total:,.0f} units")
+                        
+                        # Top products this month
+                        if part_col:
+                            top_month = monthly_data.groupby(part_col)['demand_quantity'].sum().nlargest(5).reset_index()
+                            st.caption("Top Products this Month:")
+                            st.dataframe(top_month, hide_index=True, use_container_width=True)
+                            
+                    with col2:
+                        st.markdown(f"### 📆 Last 7 Days Demand")
+                        weekly_total = weekly_data['demand_quantity'].sum()
+                        st.metric("Total Quantity (Last 7 Days)", f"{weekly_total:,.0f} units")
+                        
+                        # Top products this week
+                        if part_col:
+                            top_week = weekly_data.groupby(part_col)['demand_quantity'].sum().nlargest(5).reset_index()
+                            st.caption("Top Products this Week:")
+                            st.dataframe(top_week, hide_index=True, use_container_width=True)
                 
                 st.markdown("---")
                 
@@ -366,91 +421,6 @@ def show_upload():
         """)
 
 
-def call_azure_endpoint(model: str, periods: int, data: pd.DataFrame):
-    """Call Azure ML endpoint for predictions."""
-    import requests
-    import os
-    from dotenv import load_dotenv
-    
-    load_dotenv()
-    
-    endpoint_url = os.getenv('AZURE_ML_ENDPOINT_URL', 'https://spare-part-forecast.eastus.inference.ml.azure.com/score')
-    api_key = os.getenv('AZURE_ML_API_KEY', '')
-    
-    if not api_key:
-        raise ValueError("Azure ML API key not configured. Set AZURE_ML_API_KEY environment variable.")
-    
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
-    }
-    
-    if model == "prophet":
-        payload = {
-            "model": "prophet",
-            "periods": periods
-        }
-    else:
-        # For XGBoost, prepare features from data
-        payload = {
-            "model": "xgboost",
-            "features": prepare_xgboost_features(data, periods)
-        }
-    
-    response = requests.post(endpoint_url, json=payload, headers=headers, timeout=30)
-    response.raise_for_status()
-    
-    return response.json()
-
-
-def prepare_xgboost_features(data: pd.DataFrame, periods: int):
-    """Prepare XGBoost features from uploaded data."""
-    features_list = []
-    
-    # Get last values for lag features
-    if 'demand_quantity' in data.columns:
-        demand = data['demand_quantity'].values
-        last_val = demand[-1] if len(demand) > 0 else 50
-        lag_7 = demand[-7] if len(demand) >= 7 else last_val
-        lag_14 = demand[-14] if len(demand) >= 14 else last_val
-        lag_30 = demand[-30] if len(demand) >= 30 else last_val
-        rolling_mean_7 = np.mean(demand[-7:]) if len(demand) >= 7 else last_val
-        rolling_mean_14 = np.mean(demand[-14:]) if len(demand) >= 14 else last_val
-        rolling_mean_30 = np.mean(demand[-30:]) if len(demand) >= 30 else last_val
-        rolling_std_7 = np.std(demand[-7:]) if len(demand) >= 7 else 10
-        rolling_std_14 = np.std(demand[-14:]) if len(demand) >= 14 else 10
-        rolling_std_30 = np.std(demand[-30:]) if len(demand) >= 30 else 10
-    else:
-        last_val = lag_7 = lag_14 = lag_30 = 50
-        rolling_mean_7 = rolling_mean_14 = rolling_mean_30 = 50
-        rolling_std_7 = rolling_std_14 = rolling_std_30 = 10
-    
-    for i in range(periods):
-        future_date = datetime.now() + timedelta(days=i+1)
-        features = {
-            "day_of_week": future_date.weekday(),
-            "month": future_date.month,
-            "day_of_month": future_date.day,
-            "quarter": (future_date.month - 1) // 3 + 1,
-            "year": future_date.year,
-            "week_of_year": future_date.isocalendar()[1],
-            "is_weekend": 1 if future_date.weekday() >= 5 else 0,
-            "is_month_start": 1 if future_date.day == 1 else 0,
-            "is_month_end": 1 if future_date.day >= 28 else 0,
-            "lag_1": float(last_val),
-            "lag_7": float(lag_7),
-            "lag_14": float(lag_14),
-            "lag_30": float(lag_30),
-            "rolling_mean_7": float(rolling_mean_7),
-            "rolling_mean_14": float(rolling_mean_14),
-            "rolling_mean_30": float(rolling_mean_30),
-            "rolling_std_7": float(rolling_std_7),
-            "rolling_std_14": float(rolling_std_14),
-            "rolling_std_30": float(rolling_std_30)
-        }
-        features_list.append(features)
-    
-    return features_list
 
 
 def generate_local_forecast(data: pd.DataFrame, periods: int):
@@ -546,6 +516,7 @@ def display_forecast_results(result: dict, forecast_days: int):
         st.plotly_chart(fig, use_container_width=True)
         
         # Summary stats
+        st.markdown("### 📈 Forecast Statistics")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("Average Forecast", f"{np.mean(values):.1f}")
@@ -572,70 +543,6 @@ def display_forecast_results(result: dict, forecast_days: int):
         )
     else:
         st.error(f"Forecast error: {result.get('message', 'Unknown error')}")
-
-
-def show_forecast():
-    """Forecasting page."""
-    st.markdown("## 📈 Demand Forecast")
-    
-    col1, col2 = st.columns([1, 2])
-    
-    with col1:
-        st.markdown("### Settings")
-        
-        model = st.radio("Select Model", ["Prophet", "XGBoost"])
-        forecast_days = st.slider("Forecast Horizon (days)", 7, 90, 30)
-        part_filter = st.multiselect("Filter Parts", ['All', 'P-1234', 'P-5678'], default=['All'])
-        
-        if st.button("🚀 Generate Forecast", type="primary"):
-            with st.spinner("Generating forecast..."):
-                import time
-                time.sleep(2)
-                st.session_state['forecast_generated'] = True
-    
-    with col2:
-        if st.session_state.get('forecast_generated', False):
-            st.markdown("### Forecast Results")
-            
-            # Sample forecast data
-            dates = pd.date_range(start=datetime.now(), periods=30, freq='D')
-            forecast = 50 + np.random.randn(30).cumsum()
-            lower = forecast - 10
-            upper = forecast + 10
-            
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=dates, y=upper, mode='lines', line=dict(width=0), showlegend=False))
-            fig.add_trace(go.Scatter(x=dates, y=lower, mode='lines', fill='tonexty', 
-                                     fillcolor='rgba(249, 115, 22, 0.2)', line=dict(width=0), 
-                                     name='Confidence Interval'))
-            fig.add_trace(go.Scatter(x=dates, y=forecast, mode='lines+markers',
-                                     line=dict(color='#F97316', width=2), name='Forecast'))
-            
-            fig.update_layout(
-                title=f"{model} Forecast - Next {forecast_days} Days",
-                xaxis_title="Date",
-                yaxis_title="Demand",
-                hovermode='x unified'
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Download button
-            forecast_df = pd.DataFrame({
-                'Date': dates,
-                'Forecast': forecast,
-                'Lower': lower,
-                'Upper': upper
-            })
-            
-            st.download_button(
-                label="📥 Download Forecast CSV",
-                data=forecast_df.to_csv(index=False),
-                file_name=f"forecast_{datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv"
-            )
-        else:
-            st.info("👈 Configure forecast settings and click 'Generate Forecast'")
 
 
 def show_comparison():
@@ -673,53 +580,7 @@ def show_comparison():
     st.success("✅ **Recommendation:** XGBoost shows better performance with lower MAE (10.21) and RMSE (15.78). Consider using XGBoost for short-term predictions.")
 
 
-def show_settings():
-    """Settings page."""
-    st.markdown("## ⚙️ Settings")
-    
-    tab1, tab2, tab3 = st.tabs(["Model Config", "Azure ML", "Notifications"])
-    
-    with tab1:
-        st.subheader("Model Configuration")
-        
-        st.markdown("### Prophet Settings")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.selectbox("Seasonality Mode", ["multiplicative", "additive"])
-            st.slider("Changepoint Prior Scale", 0.001, 0.5, 0.05)
-        with col2:
-            st.checkbox("Yearly Seasonality", value=True)
-            st.checkbox("Weekly Seasonality", value=True)
-        
-        st.markdown("### XGBoost Settings")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.number_input("N Estimators", 10, 500, 100)
-            st.number_input("Max Depth", 1, 15, 6)
-        with col2:
-            st.number_input("Learning Rate", 0.01, 0.5, 0.1)
-            st.number_input("Subsample", 0.5, 1.0, 0.8)
-    
-    with tab2:
-        st.subheader("Azure ML Configuration")
-        st.text_input("Subscription ID", placeholder="your-subscription-id")
-        st.text_input("Resource Group", placeholder="your-resource-group")
-        st.text_input("Workspace Name", placeholder="your-workspace")
-        st.text_input("Endpoint Name", placeholder="demand-forecast-endpoint")
-        
-        if st.button("Test Connection"):
-            st.info("🔄 Testing Azure ML connection...")
-    
-    with tab3:
-        st.subheader("Notification Settings")
-        st.text_input("Alert Email", placeholder="your-email@company.com")
-        st.slider("Drift Alert Threshold", 0.1, 0.5, 0.3)
-        st.checkbox("Email on Model Retrain", value=True)
-        st.checkbox("Email on Drift Detection", value=True)
-    
-    st.markdown("---")
-    if st.button("💾 Save Settings", type="primary"):
-        st.success("Settings saved successfully!")
+
 
 
 if __name__ == "__main__":
