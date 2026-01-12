@@ -136,21 +136,21 @@ Final Forecast = Prophet + XGBoost(Residuals)
 **Metrics Used:**
 | Metric | What It Measures | Threshold |
 |--------|------------------|-----------|
-| **PSI** | Distribution shift | > 0.25 = Drift |
-| **KS Test** | Statistical difference | p < 0.05 = Drift |
+| **K-S Test** | Numerical columns drift | p < 0.05 |
+| **Chi-Square** | Categorical columns drift | p < 0.05 |
 | **Mean Shift** | Simple mean comparison | > 20% = Alert |
 
 **Flow:**
 ```
-[Daily 6 AM] → [Compare Baseline vs Production] → [Calculate PSI/KS]
+[Streamlit/Notebook] → [Simulate Drift Button] → [Run Check]
                         ↓
-              [Drift > 0.3?] → YES → [Alert + Retrain]
-                        ↓ NO
-                    [Log: OK]
+              [K-S/Chi-Square Tests]
+                        ↓
+         [Visualize Distibution Shifts]
 ```
 
 **Interview Answer:**
-> "I implemented drift detection using PSI and KS tests. It runs daily at 6 AM, compares production data to the training baseline. If drift exceeds 0.3, it alerts via Teams/Slack and triggers retraining."
+> "I implemented custom drift detection using K-S Test (for numerical) and Chi-Square Test (for categorical). This removes heavy dependencies like Evidently and gives me full control over the statistical thresholds (p < 0.05)."
 
 ---
 
@@ -173,7 +173,7 @@ Final Forecast = Prophet + XGBoost(Residuals)
 > Used lag features (lag_7, lag_30), rolling means, and WAPE metric (not MAPE) for items with zeros.
 
 **Q: Biggest challenge?**
-> Data drift in production. Solved with automated monitoring (daily checks at 6 AM) and retraining triggers.
+> Data drift in production. Solved with automated monitoring (custom statistical tests) and retraining triggers.
 
 **Q: How would you scale this?**
 > 1. Azure ML endpoints for high concurrency. 2. Parallel training with Dask/Spark. 3. Multi-region deployment.
@@ -219,7 +219,7 @@ Cached Request: → <1ms
 **2. Deployment (to Production):**
 *   **Containerization:** Docker (runs anywhere).
 *   **Blue-Green Deployment:** Spin up new ver., switch traffic if healthy. Instant rollback.
-*   **Monitoring:** Drift Detection (PSI/KS) + Performance tracking.
+*   **Monitoring:** Custom Drift Detection (K-S/Chi-Square) + Performance tracking.
 
 **Interview Answer:**
 > "I used **Time-Series Cross-Validation** (Rolling Origin) to prevent data leakage. For deployment, I **containerized** with Docker and uses a **Blue-Green strategy** for zero-downtime updates, continuously monitoring for **Data Drift**."
@@ -253,11 +253,8 @@ Cached Request: → <1ms
 # Run Dashboard
 streamlit run streamlit_app/app.py
 
-# Run Drift Check
-python test_drift_monitor.py
-
-# Run Production Readiness Check
-python production_check.py
+# Run Drift Analysis (Notebook)
+# Open notebooks/04_Drift_Detection.ipynb and run all cells
 ```
 
 ---
