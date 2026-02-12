@@ -24,9 +24,9 @@ jobs:
               "issuetype": {
                 "name": "Task"
               },
-              "parent": {
-                "key": "MAI-16"
-              }
+              # "parent": {
+              #   "key": "MAI-16"
+              # }
             }
           }' \
           ${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue
