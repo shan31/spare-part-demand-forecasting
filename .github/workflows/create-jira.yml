@@ -22,7 +22,7 @@ jobs:
               "summary": "${{ github.event.issue.title }}",
               "description": "${{ github.event.issue.body }}",
               "issuetype": {
-                "name": "Task"
+                "name": "Story"
               },
               # "parent": {
               #   "key": "MAI-16"
