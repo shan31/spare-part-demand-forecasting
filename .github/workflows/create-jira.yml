@@ -38,6 +38,9 @@ jobs:
               },
               "issuetype": {
                 "name": "Task"
+              },
+              "parent": {
+                "key": "${{ secrets.JIRA_EPIC_KEY }}"
               }
             }
           }' \
