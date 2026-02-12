@@ -37,7 +37,7 @@ jobs:
                 ]
               },
               "issuetype": {
-                "name": "Story"
+                "name": "Task"
               }
             }
           }' \
